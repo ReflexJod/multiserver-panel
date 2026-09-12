@@ -4,14 +4,20 @@
   "private": true,
   "description": "Multi Server digital license storefront with demo payment flow and pluggable license provider",
   "main": "server.js",
-  "scripts": {"start": "node server.js", "dev": "node --watch server.js"},
-  "engines": {"node": ">=20"},
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
   "dependencies": {
     "bcryptjs": "^3.0.2",
     "express": "^5.1.0",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.0",
-    "pg": "^8.16.3"
+    "pg": "^8.16.3",
+    "puppeteer-core": "^22.6.0"
   }
 }

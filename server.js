@@ -438,8 +438,9 @@ async function issueLicense({ product, plan, orderId }) {
   let browser;
   try {
     browser = await puppeteer.connect({
-      browserWSEndpoint: `wss://://scrapingant.com{ANT_API_KEY}`
-    });
+  browserWSEndpoint: `wss://://scrapingant.com{ANT_API_KEY}`
+});
+
 
     const page = await browser.newPage();
     

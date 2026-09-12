@@ -216,6 +216,20 @@ app.post('/api/orders', async (req,res)=>{
   } catch(e) { res.status(400).json({ error:e.message }); }
 });
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 app.post('/api/orders/:id/payment', async (req,res)=>{
   try {
     const id = req.params.id;
@@ -280,32 +294,48 @@ app.get('/api/orders/:id/status', async (req,res)=>{
   try {
     const id = req.params.id;
     let order;
+    let selectedProduct = {};
+    let selectedPlan = {};
+
     if (pool) {
-      const r = await dbQuery('SELECT * FROM orders WHERE id=$1', [id]);
+      const r = await dbQuery('SELECT o.*, p.name as product_name, pl.duration as plan_duration FROM orders o JOIN products p ON p.id=o.product_id JOIN plans pl ON pl.id=o.plan_id WHERE o.id=$1', [id]);
       if (!r.rowCount) return res.status(404).json({error:'Order not found'});
       order = r.rows[0];
+      selectedProduct = { name: order.product_name };
+      selectedPlan = { duration: order.plan_duration };
     } else {
       order = memory.orders.find(x=>x.id===id);
       if (!order) return res.status(404).json({error:'Order not found'});
+      const selection = await findSelection(order.productId, order.planId);
+      selectedProduct = selection.product || {};
+      selectedPlan = selection.plan || {};
     }
 
-    // Webhook is primary. For a pending order, status API is a controlled fallback.
-    if (order.status !== 'PAID' && order.payment_id && UPIQRPAY_API_KEY) {
+    // Process a verified payment through live API status poller checks
+    if (order.status !== 'PAID' && (order.payment_id || order.paymentId) && UPIQRPAY_API_KEY) {
       try {
-        const provider = await upiqrpayStatus(order.payment_id);
+        const provider = await upiqrpayStatus(order.payment_id || order.paymentId);
         const s = String(provider.status || '').toLowerCase();
         const amount = Number(provider.amount ?? order.amount);
         if (amount === Number(order.amount) && s === 'success') {
-          if (pool) await dbQuery(`UPDATE orders SET status='PAID', payment_status='success', payment_reference=payment_id, paid_at=COALESCE(paid_at,NOW()), licence_status='PENDING', updated_at=NOW() WHERE id=$1`, [id]);
-          else { order.status='PAID'; order.paymentStatus='success'; order.paidAt=order.paidAt||new Date().toISOString(); order.licenceStatus='PENDING'; order.updatedAt=new Date().toISOString(); }
+          
+          // CRITICAL BLOCK: Trigger our automated Cloudflare-bypassing panel collector
+          const panelLicenseResult = await issueLicense({ product: selectedProduct, plan: selectedPlan, orderId: id });
+          const realLicenseKey = panelLicenseResult.key;
+
+          if (pool) {
+            await dbQuery(`UPDATE orders SET status='PAID', payment_status='success', payment_reference=payment_id, license_key=$1, paid_at=NOW(), licence_status='ISSUED', updated_at=NOW() WHERE id=$2`, [realLicenseKey, id]);
+          } else { 
+            order.status='PAID'; order.paymentStatus='success'; order.paidAt=new Date().toISOString(); order.licenseKey=realLicenseKey; order.licenceStatus='ISSUED'; order.updatedAt=new Date().toISOString(); 
+            memory.licenses.push({ key:realLicenseKey, orderId:id, status:'ACTIVE', createdAt:new Date().toISOString() });
+          }
           order.status='PAID';
         } else if (['expired','cancelled'].includes(s)) {
           if (pool) await dbQuery(`UPDATE orders SET status='EXPIRED', payment_status=$1, updated_at=NOW() WHERE id=$2`, [s,id]);
           else { order.status='EXPIRED'; order.paymentStatus=s; order.updatedAt=new Date().toISOString(); }
         }
       } catch (e) {
-        // Don't turn a normal status poll into a hard failure; webhook may still arrive.
-        console.warn('UPIQRPay status fallback:', e.message);
+        console.warn('UPIQRPay status verification check fallback exception:', e.message);
       }
     }
 
@@ -317,22 +347,40 @@ app.get('/api/orders/:id/status', async (req,res)=>{
   } catch(e){ res.status(500).json({error:e.message}); }
 });
 
-// Demo-only payment endpoint remains available only when DEMO_MODE=true.
 app.post('/api/orders/:id/demo-pay', async (req,res)=>{
   if (!DEMO_MODE) return res.status(403).json({error:'Demo payment is disabled'});
   try {
     const id=req.params.id;
+    let order;
+    let selectedProduct = {};
+    let selectedPlan = {};
+
     if (pool) {
-      const r=await dbQuery('SELECT * FROM orders WHERE id=$1',[id]);
+      const r=await dbQuery('SELECT o.*, p.name as product_name, pl.duration as plan_duration FROM orders o JOIN products p ON p.id=o.product_id JOIN plans pl ON pl.id=o.plan_id WHERE o.id=$1',[id]);
       if(!r.rowCount) return res.status(404).json({error:'Order not found'});
-      if(r.rows[0].status==='PAID') return res.json({order:r.rows[0]});
-      const key=makeKey();
-      await dbQuery('UPDATE orders SET status=$1,payment_reference=$2,license_key=$3,payment_status=$4,licence_status=$5,paid_at=NOW(),updated_at=NOW() WHERE id=$6',['PAID',`DEMO-${crypto.randomBytes(5).toString('hex')}`,key,'success','ISSUED',id]);
-      return res.json({order:{id,status:'PAID',licenseKey:key}});
+      order = r.rows[0];
+      if(order.status==='PAID') return res.json({order});
+      selectedProduct = { name: order.product_name };
+      selectedPlan = { duration: order.plan_duration };
+    } else {
+      order=memory.orders.find(x=>x.id===id); if(!order) return res.status(404).json({error:'Order not found'});
+      if(order.status==='PAID') return res.json({order});
+      const selection = await findSelection(order.productId, order.planId);
+      selectedProduct = selection.product || {};
+      selectedPlan = selection.plan || {};
     }
-    const order=memory.orders.find(x=>x.id===id); if(!order) return res.status(404).json({error:'Order not found'});
-    if(order.status==='PAID') return res.json({order});
-    order.status='PAID'; order.paymentReference=`DEMO-${crypto.randomBytes(5).toString('hex')}`; order.licenseKey=makeKey(); order.paymentStatus='success'; order.licenceStatus='ISSUED'; order.paidAt=new Date().toISOString(); order.updatedAt=new Date().toISOString();
+
+    // Call our Cloudflare-bypassing panel worker link during test execution
+    console.log(`[Demo Payment] Routing request directly to key generation bridge...`);
+    const licenseResult = await issueLicense({ product: selectedProduct, plan: selectedPlan, orderId: id });
+    const finalKey = licenseResult.key;
+
+    if (pool) {
+      await dbQuery('UPDATE orders SET status=$1,payment_reference=$2,license_key=$3,payment_status=$4,licence_status=$5,paid_at=NOW(),updated_at=NOW() WHERE id=$6',['PAID',`DEMO-${crypto.randomBytes(5).toString('hex')}`,finalKey,'success','ISSUED',id]);
+      return res.json({order:{id,status:'PAID',licenseKey:finalKey}});
+    }
+    
+    order.status='PAID'; order.paymentReference=`DEMO-${crypto.randomBytes(5).toString('hex')}`; order.licenseKey=finalKey; order.paymentStatus='success'; order.licenceStatus='ISSUED'; order.paidAt=new Date().toISOString(); order.updatedAt=new Date().toISOString();
     memory.licenses.push({ key:order.licenseKey, orderId:id, status:'ACTIVE', createdAt:new Date().toISOString() });
     res.json({order:{...order,licenseKey:order.licenseKey}});
   } catch(e){res.status(500).json({error:e.message});}
@@ -350,19 +398,10 @@ app.post('/api/auth/login', async (req,res)=>{
   } catch(e){res.status(500).json({error:e.message});}
 });
 
-app.get('/api/admin/stats', auth, async (req,res)=>{
-  try {
-    if(pool){ const [o,l]=await Promise.all([dbQuery("SELECT COUNT(*)::int AS n,COALESCE(SUM(amount) FILTER (WHERE status='PAID'),0) AS revenue FROM orders"),dbQuery("SELECT COUNT(*)::int AS n FROM orders WHERE status='PAID'")]); return res.json({orders:o.rows[0].n,revenue:Number(o.rows[0].revenue),paidOrders:l.rows[0].n}); }
-    const paid=memory.orders.filter(x=>x.status==='PAID'); res.json({orders:memory.orders.length,revenue:paid.reduce((s,x)=>s+x.amount,0),paidOrders:paid.length});
-  }catch(e){res.status(500).json({error:e.message});}
-});
 
-app.get('/api/admin/orders', auth, async (req,res)=>{
-  try { if(pool){const r=await dbQuery('SELECT * FROM orders ORDER BY created_at DESC LIMIT 100'); return res.json({orders:r.rows});} res.json({orders:[...memory.orders].reverse().slice(0,100)}); }
-  catch(e){res.status(500).json({error:e.message});}
-});
 
-// Future real license provider integration point. Keep this separate from payment confirmation.
+
+
 
 
 

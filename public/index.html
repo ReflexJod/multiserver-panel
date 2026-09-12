@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#081f2b">
+  <meta name="description" content="Multi Server Premium Panel — instant digital access storefront demo.">
+  <title>Multi Server — Premium Panel</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;1,600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="toast" class="toast" role="status"></div>
+  <header class="site-header">
+    <a class="brand" href="#home" aria-label="Multi Server home">
+      <span class="brand-mark">⌁</span>
+      <span><strong>Multi Server</strong><small>PREMIUM PANEL</small></span>
+    </a>
+    <button id="menuBtn" class="menu-btn" aria-label="Open menu" aria-expanded="false"><span></span><span></span><span></span></button>
+  </header>
+
+  <aside id="menu" class="menu-panel" aria-hidden="true">
+    <nav>
+      <a href="#home" data-close-menu>⌂ <span>Home</span></a>
+      <a href="#contact" data-close-menu>✉ <span>Contact</span></a>
+      <a href="#privacy" data-close-menu>◈ <span>Privacy Policy</span></a>
+      <a href="#refund" data-close-menu>↩ <span>Refund Policy</span></a>
+      <a href="#terms" data-close-menu>▤ <span>Terms &amp; Conditions</span></a>
+      <a href="#admin" data-close-menu>⇥ <span>Admin Login</span></a>
+    </nav>
+  </aside>
+  <div id="scrim" class="scrim"></div>
+
+  <main>
+    <section id="home" class="page active">
+      <div class="hero-card">
+        <div class="eyebrow"><i></i> INSTANT DELIVERY</div>
+        <h1>Select your <em>Product.</em></h1>
+        <div class="accent-line"></div>
+        <p class="lead">Instant Key, Zero Waiting</p>
+
+        <label>Product</label>
+        <button id="productSelect" class="select-box" type="button"><span id="productText">FIRE X LOADER</span><b>⌄</b></button>
+
+        <label>Duration</label>
+        <button id="durationSelect" class="select-box" type="button"><span id="durationText">5 Hours Access — ₹30</span><b>⌄</b></button>
+
+        <button id="purchaseBtn" class="primary-btn">Purchase Access <span>→</span></button>
+
+        <div class="feature-row">
+          <span>⚡ <small>INSTANT</small></span><span>▣ <small>SECURE</small></span><span>♧ <small>SUPPORT</small></span>
+        </div>
+      </div>
+    </section>
+
+    <section id="checkout" class="page">
+      <div class="hero-card checkout-card">
+        <div class="eyebrow"><i></i> SECURE CHECKOUT</div>
+        <h1>Complete your <em>payment.</em></h1>
+        <div class="order-summary">
+          <div><span>PRODUCT</span><strong id="sumProduct">FIRE X LOADER</strong></div>
+          <div><span>DURATION</span><strong id="sumDuration">5 Hours Access</strong></div>
+          <div><span>TOTAL</span><strong class="total" id="sumPrice">₹30.00</strong></div>
+        </div>
+        <label>Full Name</label>
+        <input id="customerName" class="customer-input" type="text" placeholder="Enter your full name" autocomplete="name">
+        <label>UPI Phone Number</label>
+        <input id="customerPhone" class="customer-input" type="tel" inputmode="numeric" placeholder="10-digit mobile number" autocomplete="tel">
+        <p class="scan-title">SCAN WITH ANY UPI APP</p>
+        <div class="qr-wrap"><img id="qr" class="qr-img" alt="UPI payment QR code" hidden><div id="qrPlaceholder" class="qr">Create payment to load QR</div></div>
+        <div class="upi-pills"><span>PhonePe</span><span>paytm</span><span>G Pay</span></div>
+        <button id="openUpi" class="primary-btn">Create Payment &amp; Open UPI <span>→</span></button>
+        <div class="payment-progress"><span></span></div>
+        <div class="checking"><span id="paymentStatus">Enter your details to create the payment.</span><b id="timer">04:00</b></div>
+        <button id="simulatePayment" class="secondary-btn" hidden>Demo: simulate successful payment</button>
+        <div class="feature-row"><span>▣ <small>ENCRYPTED</small></span><span>◈ <small>VERIFIED UPI</small></span><span>⚡ <small>INSTANT KEY</small></span></div>
+      </div>
+    </section>
+
+    <section id="success" class="page">
+      <div class="hero-card success-card">
+        <div class="success-icon">✓</div>
+        <div class="eyebrow"><i></i> PAYMENT SUCCESSFUL</div>
+        <h1>Your <em>access key.</em></h1>
+        <p class="lead" id="successLead">Your payment status has been confirmed.</p>
+        <div class="key-box" id="keyBox"><code id="generatedKey">Licence pending</code><button id="copyKey">Copy</button></div>
+        <div class="order-summary compact"><div><span>ORDER</span><strong id="orderId">ORD-DEMO</strong></div><div><span>PRODUCT</span><strong id="successProduct">FIRE X LOADER</strong></div><div><span>ACCESS</span><strong id="successDuration">5 Hours</strong></div></div>
+        <button class="primary-btn" data-go="home">Back to Store <span>→</span></button>
+        <p class="demo-note">Demo key generation is intentionally local. Your real key-generation API will be connected later.</p>
+      </div>
+    </section>
+
+    <section id="admin" class="page dark-page">
+      <div class="admin-card">
+        <div class="admin-brand"><span>❧</span><strong>Multi Server</strong><small>PREMIUM PANEL</small></div>
+        <div class="eyebrow dark"><i></i> SECURE ACCESS</div>
+        <h1>Admin <em>Login</em></h1><p>Secure access to your dashboard</p>
+        <label>Email Address</label><input id="adminEmail" type="email" placeholder="Enter your email" autocomplete="username">
+        <label>Password</label><input id="adminPassword" type="password" placeholder="Enter your password" autocomplete="current-password">
+        <label>Secret Code</label><input id="adminSecret" type="password" placeholder="Enter secret code">
+        <label class="remember"><input id="remember" type="checkbox"> <span>Remember me for 24 hours</span></label>
+        <button id="loginBtn" class="admin-btn">⇥ &nbsp; Login to Dashboard</button>
+        <div class="admin-features"><span>▣ ENCRYPTED</span><span>◈ VERIFIED</span><span>♧ ADMIN ONLY</span></div>
+        <p class="demo-note">Demo credentials: admin@example.com / admin123 / 123456</p>
+      </div>
+    </section>
+
+    <section id="dashboard" class="page">
+      <div class="dashboard">
+        <div class="dash-head"><div><span class="eyebrow">ADMIN DASHBOARD</span><h1>Store <em>Control.</em></h1></div><button id="logoutBtn" class="small-btn">Logout</button></div>
+        <div class="stats"><div><span>SALES</span><strong id="statRevenue">₹0.00</strong></div><div><span>ORDERS</span><strong id="statOrders">0</strong></div><div><span>AVAILABLE</span><strong id="availableCount">—</strong></div><div><span>PAID</span><strong id="statPaid">0</strong></div></div>
+        <div class="dash-grid">
+          <div class="panel"><div class="panel-title"><h2>Products</h2><button id="addProduct" class="small-btn">+ Add</button></div><div id="productList"></div></div>
+          <div class="panel"><div class="panel-title"><h2>Recent Orders</h2></div><div class="orders"><div><b>#1023</b><span>FIRE X LOADER</span><strong>PAID</strong></div><div><b>#1022</b><span>MARS LOADER</span><strong>PAID</strong></div><div><b>#1021</b><span>FIRE X LOADER</span><strong>PAID</strong></div></div></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="contact" class="page info-page"><div class="info-card"><div class="eyebrow"><i></i> SUPPORT</div><h1>Contact <em>us.</em></h1><p>For support, replace this section with your Telegram, WhatsApp, email or ticketing details.</p><div class="info-list"><div>✉ <strong>Email</strong><span>support@example.com</span></div><div>◉ <strong>Telegram</strong><span>@your_support</span></div></div></div></section>
+    <section id="privacy" class="page info-page"><div class="info-card"><div class="eyebrow"><i></i> POLICY</div><h1>Privacy <em>Policy.</em></h1><p>This demo collects no server-side personal information. Before launch, replace this placeholder with a policy describing your actual data collection, cookies, payment processing and retention practices.</p></div></section>
+    <section id="refund" class="page info-page"><div class="info-card"><div class="eyebrow"><i></i> POLICY</div><h1>Refund <em>Policy.</em></h1><p>Replace this placeholder with your actual refund, cancellation and digital-goods terms before accepting real payments.</p></div></section>
+    <section id="terms" class="page info-page"><div class="info-card"><div class="eyebrow"><i></i> LEGAL</div><h1>Terms &amp; <em>Conditions.</em></h1><p>Replace this placeholder with your actual terms covering lawful use, license restrictions, payments, account security and support.</p></div></section>
+  </main>
+
+  <div id="choiceModal" class="modal" aria-hidden="true"><div class="sheet"><button class="sheet-close" id="closeSheet">×</button><h2 id="sheetTitle">Select</h2><div id="choices"></div></div></div>
+  <script src="app.js"></script>
+</body>
+</html>

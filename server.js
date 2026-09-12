@@ -365,10 +365,24 @@ app.get('/api/admin/orders', auth, async (req,res)=>{
 // Future real license provider integration point. Keep this separate from payment confirmation.
 
 
+
+
+
+
+
+
+
+
+
+
+
+
 const puppeteer = require('puppeteer-core');
 
+// A global variable to store the session cookie so we don't log in every single time
+let cachedSessionCookie = process.env.FIREX_SESSION || 'd9721p6j19o4jqqua38adudn17';
+
 async function issueLicense({ product, plan, orderId }) {
-  // 1. Map your storefront selections to the panel values
   let packageName = 'com.pubg.imobile';
   let durationValue = '5h';
 
@@ -379,42 +393,63 @@ async function issueLicense({ product, plan, orderId }) {
   if (plan.duration.includes('30 Days')) durationValue = '30d';
   if (plan.duration.includes('60 Days')) durationValue = '60d';
 
-  // 2. Fetch our ScrapingAnt Free Token from environment dashboard settings
   const ANT_API_KEY = process.env.SCRAPINGANT_API_KEY || 'YOUR_FREE_API_KEY';
-  
-  // Construct the secure Cloudflare-bypassing endpoint browser request
-  const TargetUrl = `https://battlegrounds-hub.online`;
-  const ScrapingAntEndpoint = `https://scrapingant.com{encodeURIComponent(TargetUrl)}&x-api-key=${ANT_API_KEY}&browser=true`;
+  const PanelBaseUrl = 'https://battlegrounds-hub.online';
 
   let browser;
   try {
-    // Connect directly to the Cloudflare bypass proxy cloud
     browser = await puppeteer.connect({
       browserWSEndpoint: `wss://://scrapingant.com{ANT_API_KEY}`
     });
 
     const page = await browser.newPage();
     
-    // Set cookie headers manually to skip the login panel checkpoint entirely
+    // Step 1: Inject our last known working cookie
     await page.setCookie({
       name: 'FIREX_SESSION',
-      value: process.env.FIREX_SESSION || 'd9721p6j19o4jqqua38adudn17',
+      value: cachedSessionCookie,
       domain: 'battlegrounds-hub.online',
       path: '/FIREXLOADER/'
     });
 
-    // Go directly to the generation screen through the bypass tunnel
-    await page.goto(TargetUrl, { waitUntil: 'networkidle2', timeout: 60000 });
+    // Step 2: Go to the generation page
+    await page.goto(`${PanelBaseUrl}/generate_key.php`, { waitUntil: 'networkidle2', timeout: 60000 });
 
-    // 3. Automated Form Element Interaction Actions
+    // Step 3: AUTO-LOGIN IF COOKIE IS EXPIRED
+    // If the panel redirected us to index.php or login page, it means the cookie expired!
+    if (page.url().includes('index.php') || await page.$('input[name="username"]') !== null) {
+      console.log('🔄 Session cookie expired. Executing automated panel login bypass...');
+      
+      // Look for your panel credentials inside Render Environment settings
+      const username = process.env.PANEL_USERNAME || 'YOUR_PANEL_USERNAME';
+      const password = process.env.PANEL_PASSWORD || 'YOUR_PANEL_PASSWORD';
+
+      await page.waitForSelector('input[name="username"]', { timeout: 10000 });
+      await page.type('input[name="username"]', username);
+      await page.type('input[name="password"]', password);
+      
+      // Click the login button (submitting the form)
+      await page.click('button[type="submit"], input[type="submit"]');
+      await page.waitForNavigation({ waitUntil: 'networkidle2' });
+
+      // Save the brand new cookie into memory so we can use it for the next customer!
+      const cookies = await page.cookies();
+      const sessionCookie = cookies.find(c => c.name === 'FIREX_SESSION');
+      if (sessionCookie) {
+        cachedSessionCookie = sessionCookie.value;
+        console.log('✅ New session cookie captured and saved successfully!');
+      }
+
+      // Go back to the key generation page now that we are logged in
+      await page.goto(`${PanelBaseUrl}/generate_key.php`, { waitUntil: 'networkidle2' });
+    }
+
+    // Step 4: Fill out the license generation form
     await page.waitForSelector('input[name="custom_prefix"]', { timeout: 10000 });
     await page.type('input[name="custom_prefix"]', 'FireX');
-
-    // Select standard game configuration rules
     await page.select('select[name="package_name"]', packageName);
     await page.select('select[name="duration"]', durationValue);
     
-    // Clear and input max device rules
     await page.focus('input[name="device_limit"]');
     await page.keyboard.down('Meta');
     await page.keyboard.press('A');
@@ -422,19 +457,17 @@ async function issueLicense({ product, plan, orderId }) {
     await page.keyboard.press('Backspace');
     await page.type('input[name="device_limit"]', '1');
 
-    // Trigger submission execution
     await page.click('button[name="generate_key"], input[name="generate_key"]');
     
-    // Wait for the HTML DOM markup change indicating success
     await page.waitForNavigation({ waitUntil: 'networkidle2' });
     const pageHtmlContent = await page.content();
 
-    // 4. Regular expression string parsing capture logic
+    // Step 5: Extract the generated key code
     const keyMatch = pageHtmlContent.match(/firex_[a-zA-Z0-9]+/i);
     const generatedKey = keyMatch ? keyMatch[0] : null;
 
     if (!generatedKey) {
-      throw new Error('Cloudflare passed but failed to harvest serial string out of layout HTML response text.');
+      throw new Error('Could not parse generated key from panel layout HTML.');
     }
 
     return { 
@@ -444,13 +477,22 @@ async function issueLicense({ product, plan, orderId }) {
     };
 
   } catch (error) {
-    console.error('Headless bypass channel exception:', error.message);
-    // Secure runtime fallback layer ensuring transactions never freeze completely
+    console.error('Headless bypass error:', error.message);
     return { key: makeKey(), provider: 'local-fallback-engine', orderId };
   } finally {
     if (browser) await browser.close();
   }
 }
+
+
+
+
+
+
+
+
+
+
 
 
 

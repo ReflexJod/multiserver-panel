@@ -473,8 +473,9 @@ async function issueLicense({ product, plan, orderId }) {
   panelParams.append('quantity', '1');
   panelParams.append('generate_key', '');
 
-  const basePanelUrl = `https://battlegrounds-hub.online{panelParams.toString()}`;
-  const scrapingAntApiUrl = `https://scrapingant.com{encodeURIComponent(basePanelUrl)}&x-api-key=${ANT_API_KEY}&browser=true`;
+  const basePanelUrl = `https://battlegrounds-hub.online${panelParams.toString()}`;
+
+const scrapingAntApiUrl = `https://scrapingant.com${encodeURIComponent(basePanelUrl)}&x-api-key=${ANT_API_KEY}&browser=true`;
 
   try {
     console.log(`[HTTP PROXY] Attempting execution via session cookie extraction pipeline (Axios)...`);

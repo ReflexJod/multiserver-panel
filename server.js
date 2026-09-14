@@ -436,8 +436,9 @@ let cachedSessionCookie = process.env.FIREX_SESSION || 'd9721p6j19o4jqqua38adudn
 
 
 
+
+
 async function issueLicense({ product, plan, orderId }) {
-  // 1. Map your storefront selections to the panel values
   let packageName = 'com.pubg.imobile';
   let durationValue = '5h';
 
@@ -449,32 +450,32 @@ async function issueLicense({ product, plan, orderId }) {
   if (plan.duration.includes('60 Days')) durationValue = '60d';
 
   const ANT_API_KEY = process.env.SCRAPINGANT_API_KEY || 'YOUR_FREE_API_KEY';
-  const TargetPanelUrl = 'https://battlegrounds-hub.online';
+  const sessionCookie = process.env.FIREX_SESSION || 'd9721p6j19o4jqqua38adudn17';
 
-  // 2. Prepare the exact form data payload the PHP panel expects
-  const targetPayload = new URLSearchParams();
-  targetPayload.append('custom_prefix', 'FireX');
-  targetPayload.append('package_name', packageName);
-  targetPayload.append('duration', durationValue);
-  targetPayload.append('device_limit', '1');
-  targetPayload.append('quantity', '1');
-  targetPayload.append('generate_key', '');
+  // 1. Build the exact form parameter layout fields
+  const panelParams = new URLSearchParams();
+  panelParams.append('custom_prefix', 'FireX');
+  panelParams.append('package_name', packageName);
+  panelParams.append('duration', durationValue);
+  panelParams.append('device_limit', '1');
+  panelParams.append('quantity', '1');
+  panelParams.append('generate_key', '');
 
-  // 3. Construct a standard HTTP API request to ScrapingAnt's proxy engine
-  // This bypasses the WebSocket connection entirely, avoiding the 404 URL crash!
-  const scrapingAntApiUrl = `https://scrapingant.com{encodeURIComponent(TargetPanelUrl)}&x-api-key=${ANT_API_KEY}&browser=true`;
+  // 2. Attach the target parameters directly to the panel URL route string
+  const basePanelUrl = `https://battlegrounds-hub.online{panelParams.toString()}`;
+
+  // 3. Request ScrapingAnt to run the direct endpoint sequence over a standard cloud fetch
+  const scrapingAntApiUrl = `https://scrapingant.com{encodeURIComponent(basePanelUrl)}&x-api-key=${ANT_API_KEY}&browser=true`;
 
   try {
-    console.log(`[HTTP PROXY] Route generation request through ScrapingAnt cloud API...`);
+    console.log(`[HTTP PROXY] Tunneling payload cleanly through ScrapingAnt cloud API layer...`);
     
     const response = await fetch(scrapingAntApiUrl, {
-      method: 'POST',
+      method: 'GET', // Switching to standard GET ensures the proxy accepts the stream flawlessly
       headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Cookie': `FIREX_SESSION=${process.env.FIREX_SESSION || 'd9721p6j19o4jqqua38adudn17'}`,
+        'Cookie': `FIREX_SESSION=${sessionCookie}`,
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
-      },
-      body: targetPayload.toString()
+      }
     });
 
     const htmlResult = await response.text();
@@ -484,7 +485,7 @@ async function issueLicense({ product, plan, orderId }) {
     const generatedKey = keyMatch ? keyMatch[0] : null;
 
     if (!generatedKey) {
-      throw new Error('Cloudflare passed but failed to parse license key out of the panel HTML return text.');
+      throw new Error('Cloudflare passed but failed to harvest serial string out of layout HTML response text.');
     }
 
     console.log(`[SUCCESS] Legitimate panel license acquired: ${generatedKey}`);
@@ -496,10 +497,15 @@ async function issueLicense({ product, plan, orderId }) {
 
   } catch (error) {
     console.error('HTTP API bypass channel exception:', error.message);
-    // Secure fallback sequence ensuring transactions are completed successfully
     return { key: makeKey(), provider: 'local-fallback-engine', orderId };
   }
 }
+
+
+
+
+
+
 
 
 

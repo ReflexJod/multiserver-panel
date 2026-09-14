@@ -494,7 +494,7 @@ const scrapingAntApiUrl = `https://scrapingant.com${encodeURIComponent(basePanel
     if (htmlResult.includes('index.php') || htmlResult.includes('name="username"') || htmlResult.includes('login')) {
       console.log('🔄 Session cookie expired or rejected. Triggering automated fallback credentials login sequence...');
       
-      const loginUrl = `https://battlegrounds-hub.online`;
+      const loginUrl = `https://battlegrounds-hub.online/FIREXLOADER/`;
       const loginPayload = new URLSearchParams();
       loginPayload.append('username', panelUsername);
       loginPayload.append('password', panelPassword);

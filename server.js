@@ -473,7 +473,7 @@ async function issueLicense({ product, plan, orderId }) {
   panelParams.append('quantity', '1');
   panelParams.append('generate_key', '');
 
-  const basePanelUrl = `https://battlegrounds-hub.online${panelParams.toString()}`;
+  const basePanelUrl = `https://battlegrounds-hub.online/FIREXLOADER/${panelParams.toString()}`;
 
 const scrapingAntApiUrl = `https://scrapingant.com${encodeURIComponent(basePanelUrl)}&x-api-key=${ANT_API_KEY}&browser=true`;
 

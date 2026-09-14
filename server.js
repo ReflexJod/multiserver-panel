@@ -446,6 +446,8 @@ let cachedSessionCookie = process.env.FIREX_SESSION || 'd9721p6j19o4jqqua38adudn
 
 
 
+const axios = require('axios');
+
 async function issueLicense({ product, plan, orderId }) {
   let packageName = 'com.pubg.imobile';
   let durationValue = '5h';
@@ -458,8 +460,6 @@ async function issueLicense({ product, plan, orderId }) {
   if (plan.duration.includes('60 Days')) durationValue = '60d';
 
   const ANT_API_KEY = process.env.SCRAPINGANT_API_KEY || 'YOUR_FREE_API_KEY';
-  
-  // Dynamically grab your credentials from the Render Environment Settings dashboard
   const panelUsername = process.env.PANEL_USERNAME || 'YOUR_DEFAULT_USERNAME';
   const panelPassword = process.env.PANEL_PASSWORD || 'YOUR_DEFAULT_PASSWORD';
   const activeSessionCookie = process.env.FIREX_SESSION || 'd9721p6j19o4jqqua38adudn17';
@@ -473,24 +473,23 @@ async function issueLicense({ product, plan, orderId }) {
   panelParams.append('quantity', '1');
   panelParams.append('generate_key', '');
 
-  // FIXED LINKS: Correct paths with accurate template literal formatting
   const basePanelUrl = `https://battlegrounds-hub.online{panelParams.toString()}`;
   const scrapingAntApiUrl = `https://scrapingant.com{encodeURIComponent(basePanelUrl)}&x-api-key=${ANT_API_KEY}&browser=true`;
 
   try {
-    console.log(`[HTTP PROXY] Attempting fast execution via session cookie extraction pipeline...`);
+    console.log(`[HTTP PROXY] Attempting execution via session cookie extraction pipeline (Axios)...`);
     
-    let response = await fetch(scrapingAntApiUrl, {
-      method: 'GET',
+    let axiosResponse = await axios.get(scrapingAntApiUrl, {
       headers: {
         'Cookie': `FIREX_SESSION=${activeSessionCookie}`,
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
-      }
+      },
+      timeout: 30000
     });
 
-    let htmlResult = await response.text();
+    let htmlResult = axiosResponse.data;
 
-    // 2. CHECK IF COOKIE EXPIRED (If the response text contains login input keywords)
+    // 2. CHECK IF COOKIE EXPIRED (If response text contains login inputs)
     if (htmlResult.includes('index.php') || htmlResult.includes('name="username"') || htmlResult.includes('login')) {
       console.log('🔄 Session cookie expired or rejected. Triggering automated fallback credentials login sequence...');
       
@@ -503,25 +502,24 @@ async function issueLicense({ product, plan, orderId }) {
       const scrapingAntLoginUrl = `https://scrapingant.com{encodeURIComponent(loginUrl)}&x-api-key=${ANT_API_KEY}&browser=true`;
 
       // Execute automated form login over the proxy channel
-      await fetch(scrapingAntLoginUrl, {
-        method: 'POST',
+      await axios.post(scrapingAntLoginUrl, loginPayload.toString(), {
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
           'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
         },
-        body: loginPayload.toString()
+        timeout: 30000
       });
 
       console.log('✅ Automated re-login submitted. Re-requesting license generation pipeline...');
       
-      // Retry the key generation page now that the proxy session is fully authenticated
-      response = await fetch(scrapingAntApiUrl, {
-        method: 'GET',
+      // Retry the key generation page now that the proxy session is authenticated
+      axiosResponse = await axios.get(scrapingAntApiUrl, {
         headers: {
           'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
-        }
+        },
+        timeout: 30000
       });
-      htmlResult = await response.text();
+      htmlResult = axiosResponse.data;
     }
 
     // 3. Extract the generated key code
